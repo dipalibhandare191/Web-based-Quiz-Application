@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* ... (CSS styles from previous response) ... */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(to bottom right, #f0f0f0, #e0e0e0); /* Modern background gradient */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #333; /* Darker text color */
+        }
+
+        .quiz-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px; /* More rounded corners */
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2); /* Softer shadow */
+            width: 500px;
+            text-align: center; /* Center content */
+        }
+
+        .question {
+            font-size: 1.8em; /* Larger question font */
+            margin-bottom: 20px;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .option {
+            padding: 15px;
+            border: none; /* Remove border */
+            border-radius: 10px; /* Rounded options */
+            cursor: pointer;
+            background-color: #f8f8f8; /* Very light background */
+            transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth transitions */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .option:hover {
+            background-color: #e0e0e0;
+            transform: scale(1.02); /* Subtle scale on hover */
+        }
+
+        .option.selected {
+            background-color: #4285f4; /* Google blue */
+            color: white;
+        }
+
+        .option.correct {
+            background-color: #34a853; /* Google green */
+            color: white;
+        }
+
+        .option.incorrect {
+            background-color: #ea4335; /* Google red */
+            color: white;
+        }
+
+        #next-button {
+            padding: 12px 25px;
+            background-color: #4285f4; /* Google blue */
+            border: none;
+            color: white;
+            font-size: 1.1em;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+
+        #next-button:hover {
+            background-color: #357ae8;
+        }
+
+        #next-button:disabled {
+            background-color: #ccc;
+            cursor: default;
+        }
+
+        .score-container {
+            margin-top: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .timer {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+
+        .game-over {
+            font-size: 1.5em;
+            color: #d9534f; /* Bootstrap danger red */
+            margin-top: 20px;
+        }
+        /* Style for the start screen */
+        #start-screen {
+          position: fixed; /* Stay in place */
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000; /* Ensure it's on top */
+        }
+
+        #start-screen .start-content {
+          background: white;
+          padding: 30px;
+          border-radius: 10px;
+          text-align: center;
+        }
+        #start-button{
+             padding: 12px 25px;
+            background-color: #4285f4; /* Google blue */
+            border: none;
+            color: white;
+            font-size: 1.1em;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+        #start-button:hover{
+             background-color: #357ae8;
+        }
+
+
+    
+    </style>
+</head>
+<body>
+
+<div id="start-screen">
+    <div class="start-content">
+        <h1>Welcome to the Quiz!</h1>
+        <button id="start-button">Start Quiz</button>
+    </div>
+</div>
+
+<div class="quiz-container" style="display: none;">
+    <div class="timer" id="timer">Time Left: 30</div>
+    <div class="question" id="question"></div>
+    <div class="options" id="options"></div>
+    <button id="next-button" disabled>Next</button>
+    <div class="score-container">Score: <span id="score">0</span></div>
+    <div class="game-over" id="game-over" style="display: none;">Game Over!</div>
+</div>
+
+<script>
+    const startScreen = document.getElementById('start-screen');
+    const quizContainer = document.querySelector('.quiz-container');
+    const startButton = document.getElementById('start-button');
+    const questionElement = document.getElementById('question');
+    const optionsElement = document.getElementById('options');
+    const nextButton = document.getElementById('next-button');
+    const scoreElement = document.getElementById('score');
+    const timerElement = document.getElementById('timer');
+    const gameOverElement = document.getElementById('game-over');
+
+    let currentQuestion = 0;
+    let score = 0;
+    let questions = [];
+    let selectedOption = null;
+    let timer;
+    let timeLeft = 30;
+
+    const apiUrl = 'https://opentdb.com/api.php?amount=10&type=multiple'; // Example API endpoint
+
+    startButton.addEventListener('click', () => {
+        startScreen.style.display = 'none';
+        quizContainer.style.display = 'block';
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => {
+                questions = data.results;
+                loadQuestion();
+                startTimer();
+            })
+            .catch(error => console.error('Error fetching quiz data:', error));
+    });
+
+    function loadQuestion() {
+        const questionData = questions[currentQuestion];
+        questionElement.textContent = questionData.question;
+
+        optionsElement.innerHTML = '';
+        const allOptions = [...questionData.incorrect_answers, questionData.correct_answer].sort(() => Math.random() - 0.5);
+
+        allOptions.forEach(option => {
+            const optionElement = document.createElement('div');
+            optionElement.classList.add('option');
+            optionElement.textContent = option;
+            optionElement.addEventListener('click', () => selectOption(option, questionData.correct_answer, optionElement));
+            optionsElement.appendChild(optionElement);
+        });
+        nextButton.disabled = true;
+    }
+
+    function selectOption(selected, correct, element) {
+        if (selectedOption) return;
+        selectedOption = selected;
+        const options = optionsElement.querySelectorAll('.option');
+        options.forEach(option => {
+            if (option.textContent === correct) {
+                option.classList.add('correct');
+            }
+            if (option.textContent === selected && selected !== correct) {
+                option.classList.add('incorrect');
+            }
+        });
+
+        if (selected === correct) {
+            score++;
+            scoreElement.textContent = score;
+        }
+        nextButton.disabled = false;
+    }
+
+    function nextQuestion() {
+        currentQuestion++;
+        selectedOption = null;
+        if (currentQuestion < questions.length) {
+            loadQuestion();
+            resetTimer();
+        } else {
+            gameOver();
+        }
+    }
+
+    function startTimer() {
+        timer = setInterval(() => {
+            timeLeft--;
+            timerElement.textContent = `Time Left: ${timeLeft}`;
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                gameOver();
+            }
+        }, 1000);
+    }
+
+    function resetTimer() {
+        clearInterval(timer);
+        timeLeft = 30;
+        startTimer();
+    }
+
+    function gameOver() {
+        clearInterval(timer);
+        questionElement.style.display = 'none';
+        optionsElement.style.display = 'none';
+        nextButton.style.display = 'none';
+        timerElement.style.display = 'none';
+        gameOverElement.style.display = 'block';
+    }
+
+    nextButton.addEventListener('click', nextQuestion);
+</script>
+
+</body>
+</html>
